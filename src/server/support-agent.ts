@@ -4,6 +4,8 @@ import { env } from "./env";
 import { getSupportContext } from "./support-data";
 import { TOOL_DEFINITIONS, executeTool } from "./tools";
 import { createOpenAIClient } from "./openai-client";
+import { observeOpenAI } from "@langfuse/openai";
+import { observe } from "@langfuse/tracing";
 
 export const SYSTEM_PROMPT = `You are Dad IT Support Agent.
 You are talking directly to Dad. He opened this chat himself to get help with his iPhone.
@@ -49,9 +51,9 @@ function parseToolArguments(argumentsText: string) {
   }
 }
 
-export async function runSupportConversation(request: ChatRequest): Promise<ChatResponse> {
+async function runSupportConversationInner(request: ChatRequest): Promise<ChatResponse> {
   const context = getSupportContext();
-  const openai = createOpenAIClient();
+  const openai = observeOpenAI(createOpenAIClient());
 
   const transcript: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -111,3 +113,8 @@ export async function runSupportConversation(request: ChatRequest): Promise<Chat
     }
   };
 }
+
+export const runSupportConversation = observe(runSupportConversationInner, {
+  name: "dad-it-support-chat-turn",
+  asType: "agent"
+});
